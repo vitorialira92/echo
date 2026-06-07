@@ -16,6 +16,6 @@ public interface SongRatingRepository extends JpaRepository<SongRating, SongRati
     List<SongRating> findBySongId(Long songId);
     Optional<SongRating> findByUserIdAndSongId(Long userId, Long songId);
 
-    @Query("select avg(r.rating) from SongRating r where r.songId = :songId")
+    @Query("select avg(r.rating) from SongRating r where r.song.id = :songId")
     Double averageRatingForSong(@Param("songId") Long songId);
 }

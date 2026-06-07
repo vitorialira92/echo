@@ -7,7 +7,6 @@ import liraz.echo.domain.music.Genre;
 import liraz.echo.domain.music.Song;
 import liraz.echo.domain.rating.Feeling;
 import liraz.echo.domain.rating.SongRating;
-import liraz.echo.domain.rating.SongRatingId;
 import liraz.echo.domain.user.Role;
 import liraz.echo.domain.user.User;
 import liraz.echo.repository.AlbumRepository;
@@ -63,8 +62,8 @@ public class EchoApplication implements CommandLineRunner {
         System.out.println("############################################");
         System.out.println("#              ECHO - Catalogo             #");
         System.out.println("############################################");
-        System.out.println("Banco H2 em memoria. Os dados de exemplo vão");
-        System.out.println("ser carregados para que você possa testar.");
+        System.out.println("Banco MySQL. Os dados de exemplo vao ser");
+        System.out.println("carregados para que voce possa testar.");
 
         loadSampleData();
 
@@ -285,10 +284,12 @@ public class EchoApplication implements CommandLineRunner {
 
     private void createAlbum() {
         Long artistId = promptLong("Id do artista");
-        if (!artistRepository.existsById(artistId)) {
+        Optional<Artist> artistOpt = artistRepository.findById(artistId);
+        if (artistOpt.isEmpty()) {
             warn("Nao existe artista com id " + artistId + ". Cadastre o artista primeiro.");
             return;
         }
+        Artist artist = artistOpt.get();
         String title = promptRequired("Titulo");
         if (albumRepository.existsByArtistIdAndTitle(artistId, title)) {
             warn("Esse artista ja tem um album chamado \"" + title + "\".");
@@ -300,7 +301,7 @@ public class EchoApplication implements CommandLineRunner {
         Genre genre = promptEnum("Genero", Genre.class);
         save("Album", () -> {
             Album saved = albumRepository.save(
-                    new Album(artistId, title, cover, spotify, year, genre));
+                    new Album(artist, title, cover, spotify, year, genre));
             ok("Album criado: " + saved);
         });
     }
@@ -349,10 +350,12 @@ public class EchoApplication implements CommandLineRunner {
 
     private void createSong() {
         Long albumId = promptLong("Id do album");
-        if (!albumRepository.existsById(albumId)) {
+        Optional<Album> albumOpt = albumRepository.findById(albumId);
+        if (albumOpt.isEmpty()) {
             warn("Nao existe album com id " + albumId + ". Cadastre o album primeiro.");
             return;
         }
+        Album album = albumOpt.get();
         String title = promptRequired("Titulo");
         Integer track = promptInt("Numero da faixa");
         if (songRepository.existsByAlbumIdAndTrackNumber(albumId, track)) {
@@ -365,7 +368,7 @@ public class EchoApplication implements CommandLineRunner {
         Boolean explicit = promptBoolean("Conteudo explicito?");
         save("Musica", () -> {
             Song saved = songRepository.save(
-                    new Song(albumId, title, track, duration, lyrics, spotify, explicit));
+                    new Song(album, title, track, duration, lyrics, spotify, explicit));
             ok("Musica criada: " + saved);
         });
     }
@@ -471,15 +474,19 @@ public class EchoApplication implements CommandLineRunner {
 
     private void upsertRating() {
         Long userId = promptLong("Id do usuario");
-        if (!userRepository.existsById(userId)) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
             warn("Nao existe usuario com id " + userId + ".");
             return;
         }
         Long songId = promptLong("Id da musica");
-        if (!songRepository.existsById(songId)) {
+        Optional<Song> songOpt = songRepository.findById(songId);
+        if (songOpt.isEmpty()) {
             warn("Nao existe musica com id " + songId + ".");
             return;
         }
+        User user = userOpt.get();
+        Song song = songOpt.get();
         Integer score = promptInt("Nota (1 a 10)");
         Feeling feeling = promptEnum("Sentimento", Feeling.class);
         String review = promptOptional("Resenha");
@@ -498,7 +505,7 @@ public class EchoApplication implements CommandLineRunner {
         } else {
             save("Avaliacao", () -> {
                 SongRating saved = songRatingRepository.save(
-                        new SongRating(userId, songId, score, feeling, review));
+                        new SongRating(user, song, score, feeling, review));
                 ok("Avaliacao criada: " + saved);
             });
         }
@@ -507,12 +514,14 @@ public class EchoApplication implements CommandLineRunner {
     private void deleteRating() {
         Long userId = promptLong("Id do usuario");
         Long songId = promptLong("Id da musica");
-        if (songRatingRepository.findByUserIdAndSongId(userId, songId).isEmpty()) {
+        Optional<SongRating> existing =
+                songRatingRepository.findByUserIdAndSongId(userId, songId);
+        if (existing.isEmpty()) {
             warn("Nao ha avaliacao desse usuario para essa musica.");
             return;
         }
         save("Avaliacao", () -> {
-            songRatingRepository.deleteById(new SongRatingId(userId, songId));
+            songRatingRepository.delete(existing.get());
             ok("Avaliacao removida.");
         });
     }
@@ -535,20 +544,20 @@ public class EchoApplication implements CommandLineRunner {
             Artist newjeans = artistRepository.save(new Artist(
                     "NewJeans", Country.KR, "https://i.scdn.co/image/newjeans.jpg"));
             Album getUp = albumRepository.save(new Album(
-                    newjeans.getId(), "Get Up",
+                    newjeans, "Get Up",
                     "https://i.scdn.co/image/getup.jpg",
                     "https://open.spotify.com/album/3vWA9PhuFr3JKjFkfJTzvY",
                     2023, Genre.KPOP));
 
-            Song s1 = songRepository.save(new Song(getUp.getId(), "New Jeans", 1, 110, null,
+            Song s1 = songRepository.save(new Song(getUp, "New Jeans", 1, 110, null,
                     "https://open.spotify.com/track/3eGqHquUTbsynPEzlt5RJv", false));
-            Song s2 = songRepository.save(new Song(getUp.getId(), "Super Shy", 2, 154,
+            Song s2 = songRepository.save(new Song(getUp, "Super Shy", 2, 154,
                     "Cause I'm super shy, super shy...",
                     "https://open.spotify.com/track/5sYsTRWHksKZv2zVuKQ8ME", false));
-            songRepository.save(new Song(getUp.getId(), "ETA", 3, 152, null, null, false));
+            songRepository.save(new Song(getUp, "ETA", 3, 152, null, null, false));
 
             songRatingRepository.save(new SongRating(
-                    luna.getId(), s2.getId(), 9, Feeling.EXCITED, "Grudenta e viciante!"));
+                    luna, s2, 9, Feeling.EXCITED, "Grudenta e viciante!"));
 
             ok("Dados de exemplo carregados:");
             System.out.println("  - usuarios: admin (id " + admin.getId()
@@ -562,7 +571,6 @@ public class EchoApplication implements CommandLineRunner {
     }
 
     //helpers
-
     private String prompt(String label) {
         System.out.print(label + ": ");
         return in.nextLine().trim();
@@ -739,4 +747,3 @@ public class EchoApplication implements CommandLineRunner {
         System.out.println("[!] " + text);
     }
 }
-

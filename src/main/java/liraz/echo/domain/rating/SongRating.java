@@ -6,20 +6,44 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import liraz.echo.domain.music.Song;
+import liraz.echo.domain.user.User;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "song_ratings")
-@IdClass(SongRatingId.class)
+@Table(
+        name = "song_ratings",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_song_ratings_user_song",
+                columnNames = {"user_id", "song_id"}
+        )
+)
+@Data
 public class SongRating {
 
     @Id
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Id
-    @Column(name = "song_id", nullable = false)
-    private Long songId;
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(
+            name = "user_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_song_ratings_user")
+    )
+    private User user;
+
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(
+            name = "song_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_song_ratings_song")
+    )
+    private Song song;
 
     @NotNull
     @Min(1)
@@ -42,18 +66,19 @@ public class SongRating {
     public SongRating() {
     }
 
-    public SongRating(Long userId, Long songId, Integer rating, Feeling feeling, String review, LocalDateTime createdAt) {
-        this.userId = userId;
-        this.songId = songId;
+    public SongRating(Long id, User user, Song song, Integer rating, Feeling feeling, String review, LocalDateTime createdAt) {
+        this.id = id;
+        this.user = user;
+        this.song = song;
         this.rating = rating;
         this.feeling = feeling;
         this.review = review;
         this.createdAt = createdAt;
     }
 
-    public SongRating(Long userId, Long songId, Integer rating, Feeling feeling, String review) {
-        this.userId = userId;
-        this.songId = songId;
+    public SongRating(User user, Song song, Integer rating, Feeling feeling, String review) {
+        this.user = user;
+        this.song = song;
         this.rating = rating;
         this.feeling = feeling;
         this.review = review;
@@ -66,57 +91,12 @@ public class SongRating {
         }
     }
 
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public String getReview() {
-        return review;
-    }
-
-    public void setReview(String review) {
-        this.review = review;
-    }
-
-    public void setRating(Integer rating) {
-        this.rating = rating;
-    }
-
-    public Feeling getFeeling() {
-        return feeling;
-    }
-
-    public void setFeeling(Feeling feeling) {
-        this.feeling = feeling;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Long getSongId() {
-        return songId;
-    }
-
-    public void setSongId(Long songId) {
-        this.songId = songId;
-    }
-
-    public Integer getRating() {
-        return rating;
-    }
-
     @Override
     public String toString() {
-        return "SongRating{userId=" + userId + ", songId=" + songId + ", rating=" + rating
-                + ", feeling=" + feeling + ", createdAt=" + createdAt + "}";
+        return "SongRating{id=" + id
+                + ", user=" + (user != null ? user.getId() : null)
+                + ", song=" + (song != null ? song.getId() : null)
+                + ", rating=" + rating + ", feeling=" + feeling
+                + ", createdAt=" + createdAt + "}";
     }
 }

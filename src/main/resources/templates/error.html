@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.error} + ' · echo'">Error · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <section class="error-card"
+             th:with="key=${errorKey != null ? errorKey : (status == 403 ? 'error.forbidden' : (status == 404 ? 'error.notfound' : 'error.generic'))}">
+        <div class="error-osd">
+            <span class="rec"><span class="rec-dot"></span>NO SIGNAL</span>
+            <span class="error-code" th:if="${status}" th:text="${status}">500</span>
+        </div>
+        <h1 class="display" th:text="#{error.heading}">Tape jammed</h1>
+        <p class="error-msg" th:text="#{${key}}">Something went wrong.</p>
+        <a class="btn btn-denim" th:href="@{/catalog}" th:text="#{action.backCatalog}">← back to catalog</a>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

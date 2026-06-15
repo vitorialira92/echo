@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.adminUsers} + ' · echo'">Admins · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin}" th:text="#{action.backStudio}">← studio</a>
+
+    <section class="page-head row">
+        <div>
+            <p class="eyebrow" th:text="#{admin.users.eyebrow}">accounts</p>
+            <h1 class="display" th:text="#{admin.users.heading}">Users</h1>
+        </div>
+        <a class="btn btn-pink" th:href="@{/admin/users/new}" th:text="#{admin.users.new}">+ New admin</a>
+    </section>
+
+    <table class="sheet">
+        <thead>
+        <tr>
+            <th th:text="#{label.username}">Username</th>
+            <th th:text="#{label.fullName}">Full name</th>
+            <th th:text="#{label.role}">Role</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="u : ${users}">
+            <td th:text="${u.username}">user</td>
+            <td th:text="${u.name}">Name</td>
+            <td>
+                <span class="role" th:classappend="'role-' + ${u.role}" th:text="${u.role}">USER</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="${song.title} + ' · echo'">Song · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/albums/{id}(id=${song.album.id})}"
+       th:text="#{action.backAlbum}">← back to album</a>
+
+    <section class="song-head">
+        <p class="eyebrow">
+            <span th:text="#{song.eyebrow}">track</span>
+            <span class="track-badge" th:text="'#' + ${song.trackNumber}">#1</span>
+        </p>
+        <h1 class="display" th:text="${song.title}">Song title</h1>
+        <p class="song-credit">
+            <a th:href="@{/albums/{id}(id=${song.album.id})}" th:text="${song.album.title}">Album</a>
+            <span class="sep">·</span>
+            <a th:href="@{/artists/{id}(id=${song.album.artist.id})}"
+               th:text="${song.album.artist.name}">Artist</a>
+        </p>
+        <div class="tag-row">
+            <span class="dur" th:text="${fmt.duration(song.durationSeconds)}">3:21</span>
+            <span class="explicit" th:if="${song.explicitContent}" th:text="#{label.explicit}">E</span>
+            <a class="spotify" th:if="${song.spotifyUrl}" th:href="${song.spotifyUrl}"
+               target="_blank" rel="noopener" th:text="#{label.spotify}">Spotify ↗</a>
+        </div>
+    </section>
+
+    <section class="stats-card">
+        <div class="stats-main" th:if="${stats.hasRatings()}">
+            <div class="stats-score">
+                <span class="stats-num" th:text="${#numbers.formatDecimal(stats.average, 1, 1)}">8.5</span>
+                <span class="stats-out">/ 10</span>
+            </div>
+            <div class="stats-side">
+                <span class="stats-label" th:text="#{song.topFeeling}">most felt</span>
+                <span class="feel feel-lg" th:classappend="'feel-' + ${stats.topFeeling}"
+                      th:text="#{feeling.__${stats.topFeeling}__}">feeling</span>
+                <span class="stats-count" th:text="#{song.basedOn(${stats.total})}">based on 1 rating</span>
+            </div>
+        </div>
+        <div class="stats-empty" th:unless="${stats.hasRatings()}">
+            <span class="empty-doodle">★</span>
+            <p th:text="#{song.noRatings.long}">No ratings yet — be the first to say how it feels.</p>
+        </div>
+    </section>
+
+    <section class="lyrics" th:if="${song.lyrics}">
+        <h2 class="section-title" th:text="#{song.lyrics}">Lyrics</h2>
+        <pre class="lyrics-body" th:text="${song.lyrics}">la la la</pre>
+    </section>
+
+    <section sec:authorize="hasRole('USER')" class="rate">
+        <h2 class="section-title">
+            <span th:if="${hasOwnRating}" th:text="#{rating.yours.title}">Your rating</span>
+            <span th:unless="${hasOwnRating}" th:text="#{rating.new.title}">Rate this song</span>
+        </h2>
+        <form class="form rate-form" method="post" th:action="@{/songs/{id}/ratings(id=${song.id})}"
+              th:object="${ratingForm}">
+            <div class="field">
+                <label th:text="#{rating.score}">Score (1–10)</label>
+                <select th:field="*{rating}" class="select">
+                    <option th:each="i : ${#numbers.sequence(1, 10)}" th:value="${i}" th:text="${i}">1</option>
+                </select>
+                <span class="field-err" th:if="${#fields.hasErrors('rating')}"
+                      th:errors="*{rating}">error</span>
+            </div>
+            <div class="field">
+                <label th:text="#{rating.feeling}">Feeling</label>
+                <select th:field="*{feeling}" class="select">
+                    <option th:each="f : ${feelings}" th:value="${f}"
+                            th:text="#{feeling.__${f}__}">Happy</option>
+                </select>
+                <span class="field-err" th:if="${#fields.hasErrors('feeling')}"
+                      th:errors="*{feeling}">error</span>
+            </div>
+            <div class="field">
+                <label th:text="#{rating.review}">Review</label>
+                <textarea th:field="*{review}" class="textarea" rows="4"
+                          th:placeholder="#{rating.review.placeholder}"></textarea>
+                <span class="field-err" th:if="${#fields.hasErrors('review')}"
+                      th:errors="*{review}">error</span>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-pink" type="submit">
+                    <span th:if="${hasOwnRating}" th:text="#{rating.update}">Update rating</span>
+                    <span th:unless="${hasOwnRating}" th:text="#{rating.save}">Save rating</span>
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section sec:authorize="isAnonymous()" class="rate-cta">
+        <p class="handwrite" th:text="#{rating.loginPrompt}">want to rate this? ✦</p>
+        <a class="btn btn-denim" th:href="@{/login}" th:text="#{nav.login}">Log in</a>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

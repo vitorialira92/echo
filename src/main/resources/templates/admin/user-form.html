@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.adminUsers} + ' · echo'">New admin · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin/users}" th:text="#{action.backUsers}">← users</a>
+
+    <section class="page-head">
+        <p class="eyebrow" th:text="#{admin.users.eyebrow}">accounts</p>
+        <h1 class="display" th:text="#{admin.user.new}">New administrator</h1>
+        <p class="lede" th:text="#{admin.user.note}">New accounts created here get the ADMIN role.</p>
+    </section>
+
+    <form class="form card-form" method="post" th:action="@{/admin/users}" th:object="${userForm}">
+        <div class="field">
+            <label th:text="#{label.username}">Username</label>
+            <input class="input" type="text" th:field="*{username}" autocomplete="off">
+            <span class="field-err" th:if="${#fields.hasErrors('username')}" th:errors="*{username}">error</span>
+        </div>
+        <div class="field">
+            <label th:text="#{label.fullName}">Full name</label>
+            <input class="input" type="text" th:field="*{name}" autocomplete="off">
+            <span class="field-err" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">error</span>
+        </div>
+        <div class="field">
+            <label th:text="#{label.password}">Password</label>
+            <input class="input" type="password" th:field="*{password}" autocomplete="new-password">
+            <span class="field-err" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">error</span>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-pink" type="submit" th:text="#{admin.user.create}">Create admin</button>
+            <a class="btn btn-ghost" th:href="@{/admin/users}" th:text="#{action.cancel}">Cancel</a>
+        </div>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

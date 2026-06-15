@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.login} + ' · echo'">Log in · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <section class="auth-card">
+        <p class="eyebrow" th:text="#{login.eyebrow}">rewind</p>
+        <h1 class="display" th:text="#{login.heading}">Welcome back</h1>
+
+        <div class="alert alert-err" th:if="${param.error}">
+            <span class="alert-tape"></span>
+            <span th:text="#{login.error}">Invalid username or password.</span>
+        </div>
+        <div class="alert alert-ok" th:if="${param.logout}">
+            <span class="alert-tape"></span>
+            <span th:text="#{login.loggedOut}">You have been logged out.</span>
+        </div>
+
+        <form class="form" method="post" th:action="@{/login}">
+            <div class="field">
+                <label for="username" th:text="#{label.username}">Username</label>
+                <input class="input" type="text" id="username" name="username" autocomplete="username" required>
+            </div>
+            <div class="field">
+                <label for="password" th:text="#{label.password}">Password</label>
+                <input class="input" type="password" id="password" name="password"
+                       autocomplete="current-password" required>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-denim" type="submit" th:text="#{login.submit}">Log in</button>
+            </div>
+        </form>
+
+        <p class="auth-switch">
+            <span th:text="#{login.noAccount}">No account?</span>
+            <a th:href="@{/signup}" th:text="#{nav.signup}">Sign up</a>
+        </p>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

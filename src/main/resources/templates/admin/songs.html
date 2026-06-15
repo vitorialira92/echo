@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="${album.title} + ' · echo'">Songs · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin/artists/{id}/albums(id=${album.artist.id})}"
+       th:text="#{action.backAlbums}">← albums</a>
+
+    <section class="page-head row">
+        <div>
+            <p class="eyebrow">
+                <span th:text="#{admin.songs.eyebrow}">songs on</span>
+                <span th:text="${album.title}">Album</span>
+            </p>
+            <h1 class="display" th:text="#{admin.songs.heading}">Songs</h1>
+        </div>
+        <a class="btn btn-pink" th:href="@{/admin/albums/{id}/songs/new(id=${album.id})}"
+           th:text="#{admin.songs.new}">+ New song</a>
+    </section>
+
+    <div class="empty" th:if="${#lists.isEmpty(songs)}">
+        <p th:text="#{admin.songs.empty}">No songs on this album yet.</p>
+    </div>
+
+    <table class="sheet" th:unless="${#lists.isEmpty(songs)}">
+        <thead>
+        <tr>
+            <th th:text="#{label.track}">#</th>
+            <th th:text="#{label.title}">Title</th>
+            <th th:text="#{label.duration}">Duration</th>
+            <th th:text="#{label.explicit}">Explicit</th>
+            <th class="ta-right" th:text="#{label.actions}">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${songs}">
+            <td th:text="${s.trackNumber}">1</td>
+            <td>
+                <a class="sheet-link" th:href="@{/songs/{id}(id=${s.id})}" th:text="${s.title}">Song</a>
+            </td>
+            <td th:text="${fmt.duration(s.durationSeconds)}">3:21</td>
+            <td>
+                <span class="explicit" th:if="${s.explicitContent}" th:text="#{label.explicit}">E</span>
+                <span class="muted" th:unless="${s.explicitContent}">—</span>
+            </td>
+            <td class="ta-right actions-cell">
+                <a class="btn btn-ghost btn-sm" th:href="@{/admin/songs/{id}/edit(id=${s.id})}"
+                   th:text="#{action.edit}">Edit</a>
+                <form method="post" th:action="@{/admin/songs/{id}/delete(id=${s.id})}"
+                      th:attr="data-confirm=#{admin.songs.confirmDelete}">
+                    <button class="btn btn-danger btn-sm" type="submit" th:text="#{action.delete}">Delete</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

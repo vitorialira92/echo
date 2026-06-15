@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="${artist.name} + ' · echo'">Album · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin/artists/{id}/albums(id=${artist.id})}"
+       th:text="#{action.backAlbums}">← albums</a>
+
+    <section class="page-head">
+        <p class="eyebrow">
+            <span th:text="#{admin.albums.eyebrow}">albums of</span>
+            <span th:text="${artist.name}">Artist</span>
+        </p>
+        <h1 class="display">
+            <span th:if="${editing}" th:text="#{admin.album.edit}">Edit album</span>
+            <span th:unless="${editing}" th:text="#{admin.album.new}">New album</span>
+        </h1>
+    </section>
+
+    <form class="form card-form" method="post" th:object="${albumForm}"
+          th:action="${editing} ? @{/admin/albums/{id}(id=${albumId})} : @{/admin/artists/{id}/albums(id=${artist.id})}">
+        <div class="field">
+            <label th:text="#{label.title}">Title</label>
+            <input class="input" type="text" th:field="*{title}">
+            <span class="field-err" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">error</span>
+        </div>
+        <div class="field-grid">
+            <div class="field">
+                <label th:text="#{label.genre}">Genre</label>
+                <select class="select" th:field="*{genre}">
+                    <option value="" th:text="#{label.choose}">Choose…</option>
+                    <option th:each="g : ${genres}" th:value="${g}" th:text="${g}">POP</option>
+                </select>
+                <span class="field-err" th:if="${#fields.hasErrors('genre')}" th:errors="*{genre}">error</span>
+            </div>
+            <div class="field">
+                <label th:text="#{label.year}">Release year</label>
+                <input class="input" type="number" th:field="*{releaseYear}" min="0">
+                <span class="field-err" th:if="${#fields.hasErrors('releaseYear')}"
+                      th:errors="*{releaseYear}">error</span>
+            </div>
+        </div>
+        <div class="field">
+            <label th:text="#{label.coverUrl}">Cover URL</label>
+            <input class="input" type="text" th:field="*{coverUrl}" placeholder="https://…">
+            <span class="field-err" th:if="${#fields.hasErrors('coverUrl')}" th:errors="*{coverUrl}">error</span>
+        </div>
+        <div class="field">
+            <label th:text="#{label.spotifyUrl}">Spotify URL</label>
+            <input class="input" type="text" th:field="*{spotifyUrl}" placeholder="https://open.spotify.com/…">
+            <span class="field-err" th:if="${#fields.hasErrors('spotifyUrl')}"
+                  th:errors="*{spotifyUrl}">error</span>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-pink" type="submit" th:text="#{action.save}">Save</button>
+            <a class="btn btn-ghost" th:href="@{/admin/artists/{id}/albums(id=${artist.id})}"
+               th:text="#{action.cancel}">Cancel</a>
+        </div>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

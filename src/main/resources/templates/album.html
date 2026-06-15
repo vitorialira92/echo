@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="${album.title} + ' · echo'">Album · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/artists/{id}(id=${album.artist.id})}"
+       th:text="#{action.backArtist}">← back to artist</a>
+
+    <section class="album-head">
+        <div class="album-cover">
+            <img th:if="${album.coverUrl}" th:src="${album.coverUrl}" th:alt="${album.title}">
+            <div class="photo-empty" th:unless="${album.coverUrl}"><span>◉</span></div>
+            <span class="vf-corner tl"></span><span class="vf-corner tr"></span>
+            <span class="vf-corner bl"></span><span class="vf-corner br"></span>
+        </div>
+        <div class="album-meta">
+            <p class="eyebrow" th:text="#{album.eyebrow}">album</p>
+            <h1 class="display" th:text="${album.title}">Album title</h1>
+            <a class="album-artist" th:href="@{/artists/{id}(id=${album.artist.id})}"
+               th:text="${album.artist.name}">Artist</a>
+            <div class="tag-row">
+                <span class="genre" th:text="${album.genre}">POP</span>
+                <span class="year" th:text="${album.releaseYear}">2024</span>
+                <a class="spotify" th:if="${album.spotifyUrl}" th:href="${album.spotifyUrl}"
+                   target="_blank" rel="noopener" th:text="#{label.spotify}">Spotify ↗</a>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="section-title" th:text="#{album.tracks}">Tracklist</h2>
+        <div class="empty" th:if="${#lists.isEmpty(tracks)}">
+            <p th:text="#{album.noTracks}">No songs on this album yet.</p>
+        </div>
+
+        <ul class="tracklist" th:unless="${#lists.isEmpty(tracks)}">
+            <li class="track" th:each="t : ${tracks}">
+                <span class="track-no" th:text="${t.song.trackNumber}">1</span>
+                <div class="track-main">
+                    <a class="track-title" th:href="@{/songs/{id}(id=${t.song.id})}">
+                        <span th:text="${t.song.title}">Song title</span>
+                        <span class="explicit" th:if="${t.song.explicitContent}"
+                              th:text="#{label.explicit}">E</span>
+                    </a>
+                    <div class="track-stats">
+                        <span class="dur" th:text="${fmt.duration(t.song.durationSeconds)}">3:21</span>
+                        <span class="sep">·</span>
+                        <th:block th:if="${t.stats.hasRatings()}">
+                            <span class="score">★ <span
+                                    th:text="${#numbers.formatDecimal(t.stats.average, 1, 1)}">8.5</span></span>
+                            <span class="feel" th:classappend="'feel-' + ${t.stats.topFeeling}"
+                                  th:text="#{feeling.__${t.stats.topFeeling}__}">feeling</span>
+                        </th:block>
+                        <span class="no-score" th:unless="${t.stats.hasRatings()}"
+                              th:text="#{song.noRatings}">no ratings yet</span>
+                    </div>
+                </div>
+                <a class="spotify mini" th:if="${t.song.spotifyUrl}" th:href="${t.song.spotifyUrl}"
+                   target="_blank" rel="noopener" th:text="#{label.play}">play ↗</a>
+            </li>
+        </ul>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

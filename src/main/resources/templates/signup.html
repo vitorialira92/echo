@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.signup} + ' · echo'">Sign up · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <section class="auth-card">
+        <p class="eyebrow" th:text="#{signup.eyebrow}">press record</p>
+        <h1 class="display" th:text="#{signup.heading}">Make your account</h1>
+
+        <form class="form" method="post" th:action="@{/signup}" th:object="${userForm}">
+            <div class="field">
+                <label th:text="#{label.username}">Username</label>
+                <input class="input" type="text" th:field="*{username}" autocomplete="username">
+                <span class="field-err" th:if="${#fields.hasErrors('username')}"
+                      th:errors="*{username}">error</span>
+            </div>
+            <div class="field">
+                <label th:text="#{label.fullName}">Full name</label>
+                <input class="input" type="text" th:field="*{name}" autocomplete="name">
+                <span class="field-err" th:if="${#fields.hasErrors('name')}"
+                      th:errors="*{name}">error</span>
+            </div>
+            <div class="field">
+                <label th:text="#{label.password}">Password</label>
+                <input class="input" type="password" th:field="*{password}" autocomplete="new-password">
+                <span class="field-err" th:if="${#fields.hasErrors('password')}"
+                      th:errors="*{password}">error</span>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-pink" type="submit" th:text="#{signup.submit}">Create account</button>
+            </div>
+        </form>
+
+        <p class="auth-switch">
+            <span th:text="#{signup.haveAccount}">Already have an account?</span>
+            <a th:href="@{/login}" th:text="#{nav.login}">Log in</a>
+        </p>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.myRatings} + ' · echo'">My ratings · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <section class="page-head">
+        <p class="eyebrow" th:text="#{ratings.eyebrow}">your tape</p>
+        <h1 class="display" th:text="#{ratings.heading}">My ratings</h1>
+    </section>
+
+    <div class="empty" th:if="${#lists.isEmpty(ratings)}">
+        <span class="empty-doodle">♡</span>
+        <p th:text="#{ratings.empty}">You haven't rated anything yet.</p>
+        <a class="btn btn-denim" th:href="@{/catalog}" th:text="#{action.browseCatalog}">Browse the catalog</a>
+    </div>
+
+    <div class="rating-cards" th:unless="${#lists.isEmpty(ratings)}">
+        <article class="rating-card" th:each="r : ${ratings}">
+            <span class="card-tape"></span>
+            <div class="rating-card-head">
+                <a class="rating-song" th:href="@{/songs/{id}(id=${r.song.id})}"
+                   th:text="${r.song.title}">Song</a>
+                <span class="rating-score">★ <span th:text="${r.rating}">9</span></span>
+            </div>
+            <p class="rating-credit">
+                <span th:text="${r.song.album.title}">Album</span>
+                <span class="sep">·</span>
+                <span th:text="${r.song.album.artist.name}">Artist</span>
+            </p>
+            <span class="feel" th:classappend="'feel-' + ${r.feeling}"
+                  th:text="#{feeling.__${r.feeling}__}">feeling</span>
+            <p class="rating-review" th:if="${r.review}" th:text="${r.review}">review text</p>
+            <div class="rating-card-foot">
+                <span class="rating-date" th:text="${fmt.dateTime(r.createdAt)}">01/01/2026 12:00</span>
+                <div class="rating-actions">
+                    <a class="btn btn-ghost btn-sm" th:href="@{/songs/{id}(id=${r.song.id})}"
+                       th:text="#{action.edit}">Edit</a>
+                    <form method="post" th:action="@{/ratings/{id}/delete(id=${r.song.id})}"
+                          th:attr="data-confirm=#{ratings.confirmDelete}">
+                        <button class="btn btn-danger btn-sm" type="submit"
+                                th:text="#{action.remove}">Remove</button>
+                    </form>
+                </div>
+            </div>
+        </article>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

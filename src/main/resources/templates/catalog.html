@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.catalog} + ' · echo'">Catalog · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <section class="hero">
+        <p class="eyebrow" th:text="#{catalog.eyebrow}">now playing</p>
+        <h1 class="display" th:text="#{catalog.heading}">Your music scrapbook</h1>
+        <p class="lede" th:text="#{catalog.lede}">Flip through artists, albums and songs — then jot down how each one made you feel.</p>
+
+        <form class="search" method="get" th:action="@{/catalog}">
+            <input class="search-input" type="text" name="q" th:value="${q}"
+                   th:placeholder="#{catalog.search.placeholder}" autocomplete="off">
+            <button class="btn btn-denim" type="submit" th:text="#{catalog.search.button}">Search</button>
+            <a class="search-clear" th:if="${q != null and !q.isEmpty()}" th:href="@{/catalog}"
+               th:text="#{catalog.search.clear}">clear</a>
+        </form>
+    </section>
+
+    <section>
+        <div class="empty" th:if="${#lists.isEmpty(artists)}">
+            <span class="empty-doodle">¯\_(ツ)_/¯</span>
+            <p th:text="#{catalog.empty}">No artists yet. Check back soon!</p>
+        </div>
+
+        <div class="scrapbook" th:unless="${#lists.isEmpty(artists)}">
+            <a class="polaroid" th:each="a : ${artists}" th:href="@{/artists/{id}(id=${a.id})}">
+                <div class="polaroid-photo">
+                    <img th:if="${a.imageUrl}" th:src="${a.imageUrl}" th:alt="${a.name}">
+                    <div class="photo-empty" th:unless="${a.imageUrl}"><span>♪</span></div>
+                    <span class="vf-corner tl"></span>
+                    <span class="vf-corner tr"></span>
+                    <span class="vf-corner bl"></span>
+                    <span class="vf-corner br"></span>
+                </div>
+                <div class="polaroid-cap">
+                    <span class="cap-name" th:text="${a.name}">Artist</span>
+                    <span class="country" th:text="${a.country}">BR</span>
+                </div>
+            </a>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

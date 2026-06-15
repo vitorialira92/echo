@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="${artist.name} + ' · echo'">Albums · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin/artists}" th:text="#{action.backArtists}">← artists</a>
+
+    <section class="page-head row">
+        <div>
+            <p class="eyebrow">
+                <span th:text="#{admin.albums.eyebrow}">albums of</span>
+                <span th:text="${artist.name}">Artist</span>
+            </p>
+            <h1 class="display" th:text="#{admin.albums.heading}">Albums</h1>
+        </div>
+        <a class="btn btn-pink" th:href="@{/admin/artists/{id}/albums/new(id=${artist.id})}"
+           th:text="#{admin.albums.new}">+ New album</a>
+    </section>
+
+    <div class="empty" th:if="${#lists.isEmpty(albums)}">
+        <p th:text="#{admin.albums.empty}">No albums for this artist yet.</p>
+    </div>
+
+    <table class="sheet" th:unless="${#lists.isEmpty(albums)}">
+        <thead>
+        <tr>
+            <th th:text="#{label.title}">Title</th>
+            <th th:text="#{label.genre}">Genre</th>
+            <th th:text="#{label.year}">Year</th>
+            <th class="ta-right" th:text="#{label.actions}">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="al : ${albums}">
+            <td>
+                <a class="sheet-link" th:href="@{/albums/{id}(id=${al.id})}" th:text="${al.title}">Album</a>
+            </td>
+            <td><span class="genre" th:text="${al.genre}">POP</span></td>
+            <td th:text="${al.releaseYear}">2024</td>
+            <td class="ta-right actions-cell">
+                <a class="btn btn-ghost btn-sm" th:href="@{/admin/albums/{id}/songs(id=${al.id})}"
+                   th:text="#{admin.albums.songs}">Songs</a>
+                <a class="btn btn-ghost btn-sm" th:href="@{/admin/albums/{id}/edit(id=${al.id})}"
+                   th:text="#{action.edit}">Edit</a>
+                <form method="post" th:action="@{/admin/albums/{id}/delete(id=${al.id})}"
+                      th:attr="data-confirm=#{admin.albums.confirmDelete}">
+                    <button class="btn btn-danger btn-sm" type="submit" th:text="#{action.delete}">Delete</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.studio} + ' · echo'">Studio · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <section class="page-head">
+        <p class="eyebrow" th:text="#{studio.eyebrow}">behind the tape</p>
+        <h1 class="display" th:text="#{studio.heading}">Studio</h1>
+        <p class="lede" th:text="#{studio.lede}">Add artists, albums and songs, and bring on new admins.</p>
+    </section>
+
+    <div class="studio-grid">
+        <a class="studio-card" th:href="@{/admin/artists}">
+            <span class="card-tape"></span>
+            <span class="studio-icon">♪</span>
+            <h2 th:text="#{studio.catalog.title}">Catalog</h2>
+            <p th:text="#{studio.catalog.text}">Manage artists, their albums and songs.</p>
+        </a>
+        <a class="studio-card" th:href="@{/admin/users}">
+            <span class="card-tape"></span>
+            <span class="studio-icon">✦</span>
+            <h2 th:text="#{studio.admins.title}">Admins</h2>
+            <p th:text="#{studio.admins.text}">View accounts and register new administrators.</p>
+        </a>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

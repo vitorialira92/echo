@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.adminArtists} + ' · echo'">Artists · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin}" th:text="#{action.backStudio}">← studio</a>
+
+    <section class="page-head row">
+        <div>
+            <p class="eyebrow" th:text="#{admin.artists.eyebrow}">catalog</p>
+            <h1 class="display" th:text="#{admin.artists.heading}">Artists</h1>
+        </div>
+        <a class="btn btn-pink" th:href="@{/admin/artists/new}" th:text="#{admin.artists.new}">+ New artist</a>
+    </section>
+
+    <div class="empty" th:if="${#lists.isEmpty(artists)}">
+        <p th:text="#{admin.artists.empty}">No artists yet.</p>
+    </div>
+
+    <table class="sheet" th:unless="${#lists.isEmpty(artists)}">
+        <thead>
+        <tr>
+            <th th:text="#{label.name}">Name</th>
+            <th th:text="#{label.country}">Country</th>
+            <th class="ta-right" th:text="#{label.actions}">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="a : ${artists}">
+            <td>
+                <a class="sheet-link" th:href="@{/artists/{id}(id=${a.id})}" th:text="${a.name}">Name</a>
+            </td>
+            <td><span class="country" th:text="${a.country}">BR</span></td>
+            <td class="ta-right actions-cell">
+                <a class="btn btn-ghost btn-sm" th:href="@{/admin/artists/{id}/albums(id=${a.id})}"
+                   th:text="#{admin.artists.albums}">Albums</a>
+                <a class="btn btn-ghost btn-sm" th:href="@{/admin/artists/{id}/edit(id=${a.id})}"
+                   th:text="#{action.edit}">Edit</a>
+                <form method="post" th:action="@{/admin/artists/{id}/delete(id=${a.id})}"
+                      th:attr="data-confirm=#{admin.artists.confirmDelete}">
+                    <button class="btn btn-danger btn-sm" type="submit" th:text="#{action.delete}">Delete</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

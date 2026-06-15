@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="${album.title} + ' · echo'">Song · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin/albums/{id}/songs(id=${album.id})}"
+       th:text="#{action.backSongs}">← songs</a>
+
+    <section class="page-head">
+        <p class="eyebrow">
+            <span th:text="#{admin.songs.eyebrow}">songs on</span>
+            <span th:text="${album.title}">Album</span>
+        </p>
+        <h1 class="display">
+            <span th:if="${editing}" th:text="#{admin.song.edit}">Edit song</span>
+            <span th:unless="${editing}" th:text="#{admin.song.new}">New song</span>
+        </h1>
+    </section>
+
+    <form class="form card-form" method="post" th:object="${songForm}"
+          th:action="${editing} ? @{/admin/songs/{id}(id=${songId})} : @{/admin/albums/{id}/songs(id=${album.id})}">
+        <div class="field">
+            <label th:text="#{label.title}">Title</label>
+            <input class="input" type="text" th:field="*{title}">
+            <span class="field-err" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">error</span>
+        </div>
+        <div class="field-grid">
+            <div class="field">
+                <label th:text="#{label.track}">Track number</label>
+                <input class="input" type="number" th:field="*{trackNumber}" min="1">
+                <span class="field-err" th:if="${#fields.hasErrors('trackNumber')}"
+                      th:errors="*{trackNumber}">error</span>
+            </div>
+            <div class="field">
+                <label th:text="#{label.durationSeconds}">Duration (seconds)</label>
+                <input class="input" type="number" th:field="*{durationSeconds}" min="1">
+                <span class="field-err" th:if="${#fields.hasErrors('durationSeconds')}"
+                      th:errors="*{durationSeconds}">error</span>
+            </div>
+        </div>
+        <div class="field">
+            <label th:text="#{label.spotifyUrl}">Spotify URL</label>
+            <input class="input" type="text" th:field="*{spotifyUrl}" placeholder="https://open.spotify.com/…">
+            <span class="field-err" th:if="${#fields.hasErrors('spotifyUrl')}"
+                  th:errors="*{spotifyUrl}">error</span>
+        </div>
+        <div class="field">
+            <label th:text="#{label.lyrics}">Lyrics</label>
+            <textarea class="textarea" th:field="*{lyrics}" rows="6"></textarea>
+            <span class="field-err" th:if="${#fields.hasErrors('lyrics')}" th:errors="*{lyrics}">error</span>
+        </div>
+        <div class="field check">
+            <label class="check-label">
+                <input type="checkbox" th:field="*{explicitContent}">
+                <span th:text="#{label.explicitContent}">Explicit content</span>
+            </label>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-pink" type="submit" th:text="#{action.save}">Save</button>
+            <a class="btn btn-ghost" th:href="@{/admin/albums/{id}/songs(id=${album.id})}"
+               th:text="#{action.cancel}">Cancel</a>
+        </div>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

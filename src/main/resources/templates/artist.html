@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="${artist.name} + ' · echo'">Artist · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/catalog}" th:text="#{action.backCatalog}">← back to catalog</a>
+
+    <section class="profile">
+        <div class="profile-photo">
+            <img th:if="${artist.imageUrl}" th:src="${artist.imageUrl}" th:alt="${artist.name}">
+            <div class="photo-empty" th:unless="${artist.imageUrl}"><span>♪</span></div>
+            <span class="vf-corner tl"></span><span class="vf-corner tr"></span>
+            <span class="vf-corner bl"></span><span class="vf-corner br"></span>
+        </div>
+        <div class="profile-meta">
+            <p class="eyebrow" th:text="#{artist.eyebrow}">artist</p>
+            <h1 class="display" th:text="${artist.name}">Artist name</h1>
+            <span class="country country-lg" th:text="${artist.country}">BR</span>
+            <p class="handwrite profile-note" th:text="#{artist.note}">caught on tape ✦</p>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="section-title" th:text="#{artist.albums}">Albums</h2>
+        <div class="empty" th:if="${#lists.isEmpty(albums)}">
+            <p th:text="#{artist.noAlbums}">No albums for this artist yet.</p>
+        </div>
+        <div class="scrapbook" th:unless="${#lists.isEmpty(albums)}">
+            <a class="polaroid" th:each="al : ${albums}" th:href="@{/albums/{id}(id=${al.id})}">
+                <div class="polaroid-photo">
+                    <img th:if="${al.coverUrl}" th:src="${al.coverUrl}" th:alt="${al.title}">
+                    <div class="photo-empty" th:unless="${al.coverUrl}"><span>◉</span></div>
+                    <span class="vf-corner tl"></span><span class="vf-corner tr"></span>
+                    <span class="vf-corner bl"></span><span class="vf-corner br"></span>
+                </div>
+                <div class="polaroid-cap">
+                    <span class="cap-name" th:text="${al.title}">Album</span>
+                    <span class="cap-sub">
+                        <span class="genre" th:text="${al.genre}">POP</span>
+                        <span class="year" th:text="${al.releaseYear}">2024</span>
+                    </span>
+                </div>
+            </a>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:lang="${#locale.language}">
+<head>
+    <th:block th:replace="~{fragments/common :: meta}"></th:block>
+    <title th:text="#{title.adminArtists} + ' · echo'">Artist · echo</title>
+</head>
+<body>
+<header th:replace="~{fragments/common :: topbar}"></header>
+
+<main class="container container-narrow">
+    <div th:replace="~{fragments/common :: messages}"></div>
+
+    <a class="back" th:href="@{/admin/artists}" th:text="#{action.backArtists}">← artists</a>
+
+    <section class="page-head">
+        <p class="eyebrow" th:text="#{admin.artists.eyebrow}">catalog</p>
+        <h1 class="display">
+            <span th:if="${editing}" th:text="#{admin.artist.edit}">Edit artist</span>
+            <span th:unless="${editing}" th:text="#{admin.artist.new}">New artist</span>
+        </h1>
+    </section>
+
+    <form class="form card-form" method="post" th:object="${artistForm}"
+          th:action="${editing} ? @{/admin/artists/{id}(id=${artistId})} : @{/admin/artists}">
+        <div class="field">
+            <label th:text="#{label.name}">Name</label>
+            <input class="input" type="text" th:field="*{name}">
+            <span class="field-err" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">error</span>
+        </div>
+        <div class="field">
+            <label th:text="#{label.country}">Country</label>
+            <select class="select" th:field="*{country}">
+                <option value="" th:text="#{label.choose}">Choose…</option>
+                <option th:each="c : ${countries}" th:value="${c}" th:text="${c}">BR</option>
+            </select>
+            <span class="field-err" th:if="${#fields.hasErrors('country')}" th:errors="*{country}">error</span>
+        </div>
+        <div class="field">
+            <label th:text="#{label.imageUrl}">Profile image URL</label>
+            <input class="input" type="text" th:field="*{imageUrl}" placeholder="https://…">
+            <span class="field-err" th:if="${#fields.hasErrors('imageUrl')}" th:errors="*{imageUrl}">error</span>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-pink" type="submit" th:text="#{action.save}">Save</button>
+            <a class="btn btn-ghost" th:href="@{/admin/artists}" th:text="#{action.cancel}">Cancel</a>
+        </div>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

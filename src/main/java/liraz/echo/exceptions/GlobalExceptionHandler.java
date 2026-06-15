@@ -1,6 +1,5 @@
-package liraz.echo.controller;
+package liraz.echo.exceptions;
 
-import liraz.echo.exceptions.ResourceNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.ui.Model;

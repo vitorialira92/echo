@@ -40,7 +40,7 @@ Sistema web do Echo (catálogo de músicas), feito com **Spring Boot**, **Spring
 
 As credenciais ficam em `src/main/resources/application.properties` (por padrão usuário `root` / senha `123456`). Ajuste-as conforme o seu MySQL.
 
-> Para começar de um banco limpo a cada execução, troque `ddl-auto` para `create-drop` no `application.properties`.
+> Para começar de um banco limpo a cada execução, troque `ddl-auto` para `create-drop` no `application.properties`. Isso também é a forma mais simples de **recarregar os dados de exemplo** depois de editar um arquivo de seed (veja a seção [Dados de exemplo (seed)](#dados-de-exemplo-seed)).
 
 ### Como rodar
 
@@ -52,14 +52,132 @@ mvn spring-boot:run
 
 Depois, abra o navegador em **http://localhost:8080**.
 
-### Usuários populados na inicialização
+### Dados de exemplo (seed)
 
-Ao subir pela primeira vez, uma rotina de inicialização cria **dados de exemplo** (caso ainda não existam): o artista *NewJeans*, o álbum *Get Up*, três músicas, uma avaliação e os dois usuários abaixo (senhas em hash BCrypt):
+Os dados de exemplo **não** são inseridos por script SQL nem na mão: eles ficam em três arquivos **JSON** em `src/main/resources/seed/`, e são carregados pela própria aplicação na primeira subida pela rotina `DataInitializer`.
+
+| Arquivo | Conteúdo |
+|---|---|
+| `music_seed.json` | Catálogo completo: artistas → álbuns → faixas. |
+| `users_seed.json` | Usuários iniciais. |
+| `ratings_seed.json` | Avaliações de exemplo. |
+
+#### Como a carga funciona
+
+- Roda automaticamente na inicialização (`CommandLineRunner`), na ordem **usuários → catálogo → avaliações**.
+- **Idempotente por tabela**: cada bloco só roda se a tabela correspondente estiver **vazia** (`count() == 0`). Em subidas seguintes nada é reinserido e nada é duplicado.
+- **Consequência prática**: para recarregar depois de editar qualquer seed, comece de um **banco vazio** (veja [Recarregar do zero](#recarregar-do-zero)). Se uma tabela já tem linhas, aquele seed é ignorado por completo.
+- As senhas dos usuários são gravadas como **hash BCrypt**; no JSON elas ficam em texto puro só para facilitar o seed.
+- Chaves desconhecidas no JSON são **ignoradas** (`@JsonIgnoreProperties`), então dá para acrescentar campos extras sem quebrar a carga.
+
+#### Esquema do `music_seed.json`
+
+Um objeto com a lista `artists`; cada artista tem `albums`, e cada álbum tem `songs`:
+
+```jsonc
+{
+  "artists": [
+    {
+      "name": "NewJeans",           // obrigatório (artista sem nome é ignorado)
+      "country": "KR",              // enum Country (BR, US, CA, GB, FR, KR, ...) — opcional
+      "imageUrl": "https://...",    // opcional
+      "albums": [
+        {
+          "name": "Get Up",         // obrigatório (álbum sem nome é ignorado)
+          "year": 2023,             // opcional (ausente -> 0)
+          "genre": "KPOP",          // enum Genre (POP, RAP, ROCK, KPOP, MPB, ...) — ausente -> POP
+          "coverUrl": "https://...",// opcional
+          "spotifyUrl": null,       // opcional
+          "songs": [
+            {
+              "title": "Super Shy", // obrigatório (faixa sem título é ignorada)
+              "trackNumber": 1,     // opcional (ver "Saneamento na carga")
+              "durationSeconds": 154,// opcional (ausente/<1 -> 1)
+              "lyrics": null,       // opcional
+              "spotifyUrl": null,   // opcional
+              "explicit": false     // opcional (ausente -> false)
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Esquema do `users_seed.json`
+
+Uma lista de usuários:
+
+```json
+[
+  { "username": "admin", "password": "admin123", "name": "Administrador", "role": "ADMIN" },
+  { "username": "luna",  "password": "luna123",  "name": "Luna Park",     "role": "USER"  }
+]
+```
+
+- `username` é único; `password` vai em texto puro e vira **hash BCrypt** na carga; `role` ∈ {`ADMIN`, `USER`}.
+
+Esses dois usuários são os que sobem por padrão:
 
 | Usuário | Senha      | Papel   | Acesso                                              |
 |---------|------------|---------|-----------------------------------------------------|
 | `admin` | `admin123` | `ADMIN` | Área administrativa (catálogo e novos admins)       |
 | `luna`  | `luna123`  | `USER`  | Avaliar músicas e gerenciar as próprias avaliações  |
+
+#### Esquema do `ratings_seed.json`
+
+Uma lista de avaliações. Cada uma aponta para a música por **nome do artista + título do álbum + título da faixa**:
+
+```json
+[
+  {
+    "username": "luna",
+    "artist": "NewJeans",
+    "album": "Get Up",
+    "song": "Super Shy",
+    "rating": 9,
+    "feeling": "EXCITED",
+    "review": "Grudenta e viciante!"
+  }
+]
+```
+
+- O trio **artista / álbum / faixa** é casado de forma **exata, mas sem diferenciar maiúsculas**. Se não casar com nada do `music_seed.json`, a avaliação é apenas **ignorada com um aviso no log** — não derruba a subida.
+- `rating` é inteiro de 1 a 10; `feeling` ∈ {`HAPPY`, `SAD`, `ANGRY`, `EXCITED`, `RELAXED`, `NOSTALGIC`}; `review` é opcional.
+- Os campos de enum (`country`, `genre`, `role`, `feeling`) precisam usar **exatamente** um dos valores válidos do enum.
+
+> **Ao trocar o `music_seed.json`** (por exemplo, por um catálogo maior gerado pelo script), confira se o `ratings_seed.json` ainda referencia um artista/álbum/faixa **existente** no novo catálogo; caso contrário, aquela avaliação de exemplo simplesmente não é criada.
+
+#### Saneamento na carga (catálogo)
+
+Para o seed nunca derrubar a aplicação por dado inconsistente, ao inserir o catálogo o `DataInitializer` ajusta automaticamente:
+
+- **Faixa sem número, com número < 1 ou repetido no álbum** → recebe o **menor inteiro positivo ainda não usado** naquele álbum (garante `trackNumber` não nulo, ≥ 1 e único por álbum, respeitando a restrição `(album, track_number)`).
+- **Duração ausente ou < 1** → vira **1**.
+- **`explicit` ausente** → **false**; **gênero ausente** → **POP**; **ano ausente** → **0**.
+- **Artista/álbum sem nome** ou **faixa sem título** → são **ignorados**.
+
+#### Recarregar do zero
+
+Como cada seed só roda com a tabela vazia, para aplicar um seed novo:
+
+- **Opção 1 — MySQL**: `DROP DATABASE echo;`. Na próxima subida a aplicação recria o banco vazio (via `createDatabaseIfNotExist`) e o seed roda de novo.
+- **Opção 2 — propriedades**: use `spring.jpa.hibernate.ddl-auto=create-drop` no `application.properties` para zerar o schema a cada execução.
+
+#### Como o `music_seed.json` é gerado
+
+O catálogo é produzido por um script Python (`generate_seed.py`), disponível no diretório **resources/scripts/generate_seed.py**, que consulta **APIs públicas, sem chaves nem login**:
+
+- **Deezer** (`api.deezer.com`) para artistas, álbuns e faixas;
+- **MusicBrainz** para o país de origem do artista;
+- **opcionalmente** o **Genius** (variável `GENIUS_ACCESS_TOKEN` num `.env`) para letras.
+
+Detalhes úteis:
+
+- Dependências: `pip install requests lyricsgenius musicbrainzngs python-dotenv`.
+- Por padrão traz **apenas álbuns** (`INCLUDE_RECORD_TYPES = ("album",)`); para incluir EPs e singles, troque para `("album", "ep", "single")`.
+- O Deezer não fornece links do Spotify, então **`spotifyUrl` sai como `null`** em tudo. O campo é opcional e renderiza normalmente vazio — dá para preenchê-lo manualmente depois (artista por artista) sem qualquer efeito sobre a carga.
 
 ### Como navegar
 

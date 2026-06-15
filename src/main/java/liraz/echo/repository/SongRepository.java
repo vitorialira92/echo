@@ -12,6 +12,8 @@ import java.util.List;
 public interface SongRepository extends JpaRepository<Song, Long> {
     List<Song> findByAlbumId(Long albumId);
     boolean existsByAlbumIdAndTrackNumber(Long albumId, Integer trackNumber);
+    boolean existsByAlbumIdAndTrackNumberAndIdNot(Long albumId, Integer trackNumber, Long id);
+
 
     @Query("select s from Song s where s.album.artist.id = :artistId")
     List<Song> findByArtistId(@Param("artistId") Long artistId);

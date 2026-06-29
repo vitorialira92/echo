@@ -1,6 +1,6 @@
 # Echo
 
-Sistema web do Echo (catálogo de músicas), feito com **Spring Boot**, **Spring MVC**, **Thymeleaf**, **Spring Data JPA**, **Spring Security** e banco **MySQL**. Esta entrega contém o catálogo público, o cadastro de usuários, a avaliação de músicas, a área administrativa e a internacionalização da interface (português, inglês e francês), sobre a mesma camada de domínio e repositórios da entrega anterior.
+Sistema web do Echo (catálogo de músicas), feito com **Spring Boot**, **Spring MVC**, **Thymeleaf**, **Spring Data JPA**, **Spring Security** e banco **MySQL**. Esta entrega acrescenta uma **API REST** (sob `/api`) sobre a aplicação MVC já existente, mantendo o catálogo público, o cadastro de usuários, a avaliação de músicas, a área administrativa e a internacionalização da interface (português, inglês e francês) exatamente como na entrega anterior, e reaproveitando a mesma camada de domínio, serviços e repositórios.
 
 ## Funcionalidades
 
@@ -9,6 +9,7 @@ Sistema web do Echo (catálogo de músicas), feito com **Spring Boot**, **Spring
 - **Avaliações**: usuários autenticados avaliam uma música com nota de 1 a 10, um sentimento e uma resenha opcional, e gerenciam (editam/removem) suas próprias avaliações.
 - **Área administrativa**: administradores fazem o CRUD de artistas, álbuns e músicas e cadastram novos administradores.
 - **Idiomas**: a interface está disponível em **português, inglês e francês**.
+- **API REST**: além da interface web, o sistema expõe uma API REST em JSON sob `/api` para usuários, artistas, álbuns, músicas e avaliações, com autenticação HTTP Basic. Veja a seção [API REST](#api-rest).
 
 ## Regras de negócio
 
@@ -24,6 +25,191 @@ Sistema web do Echo (catálogo de músicas), feito com **Spring Boot**, **Spring
 - **Público (sem login)**: navega por todo o catálogo, mas não avalia músicas.
 - **`USER`**: tudo do público, mais avaliar músicas e gerenciar as próprias avaliações.
 - **`ADMIN`**: gerencia o catálogo (artistas, álbuns e músicas) e cadastra novos administradores.
+
+## API REST
+
+Além da interface web em Thymeleaf, esta entrega expõe uma **API REST** em JSON sob o prefixo `/api`, implementada com **controladores REST do Spring MVC** sobre os mesmos serviços e repositórios **Spring Data JPA** que já sustentam a aplicação. A interface web (com login por formulário e sessão) continua funcionando exatamente como antes, porque a API vive em uma cadeia de segurança própria e independente.
+
+Os corpos de requisição e de resposta são sempre JSON. As respostas nunca devolvem a entidade JPA diretamente: cada recurso tem um DTO próprio, e o **hash da senha do usuário jamais é exposto**. Quando um recurso referencia outro (um álbum referencia o artista, uma música referencia o álbum, uma avaliação referencia o usuário e a música), essa referência sai apenas como `id`.
+
+### Autenticação e autorização
+
+A API é **stateless** e usa **HTTP Basic** (nome de usuário e senha em cada requisição), no lugar do login por formulário e sessão da interface web; por isso o CSRF fica desabilitado apenas nas rotas `/api/**`. As regras de acesso seguem os requisitos do sistema:
+
+- **Leitura pública do catálogo (R6)**: listar e visualizar artistas, álbuns e músicas, além da média pública de uma música (`/api/ratings/avg/{songId}`), não exige login.
+- **Escrita do catálogo (R1 a R3)**: criar, atualizar e remover artistas, álbuns e músicas exige o perfil **`ADMIN`**.
+- **Avaliações (R7 e R8)**: registrar, atualizar, remover e listar avaliações exige o perfil **`USER`**.
+- **Usuários**: criar é público (R5), enquanto listar, ver, atualizar e remover são operações administrativas (`ADMIN`). A criação de administradores (R4) é tratada à parte, como explicado em [Decisão de projeto nos endpoints de usuário](#decisão-de-projeto-nos-endpoints-de-usuário).
+
+Para testar, use os usuários do seed: **`admin` / `admin123`** (perfil `ADMIN`) e **`luna` / `luna123`** (perfil `USER`).
+
+Quem chama uma rota protegida sem credenciais válidas recebe **401**; quem está autenticado mas sem o perfil necessário recebe **403**. Nos dois casos o corpo é um JSON de erro no mesmo formato das demais respostas.
+
+### Endpoints
+
+**Usuários**
+
+| Método | Endpoint | Acesso | Descrição |
+|---|---|---|---|
+| POST | `/api/users` | Público (criar `ADMIN` exige `ADMIN`) | Cria um usuário |
+| GET | `/api/users` | `ADMIN` | Lista os usuários |
+| GET | `/api/users/{id}` | `ADMIN` | Retorna o usuário de id `{id}` |
+| PUT | `/api/users/{id}` | `ADMIN` | Atualiza o usuário de id `{id}` |
+| DELETE | `/api/users/{id}` | `ADMIN` | Remove o usuário de id `{id}` |
+
+**Artistas**
+
+| Método | Endpoint | Acesso | Descrição |
+|---|---|---|---|
+| POST | `/api/artists` | `ADMIN` | Cria um artista |
+| GET | `/api/artists` | Público | Lista os artistas |
+| GET | `/api/artists/{id}` | Público | Retorna o artista de id `{id}` |
+| PUT | `/api/artists/{id}` | `ADMIN` | Atualiza o artista de id `{id}` |
+| DELETE | `/api/artists/{id}` | `ADMIN` | Remove o artista de id `{id}` |
+
+**Álbuns**
+
+| Método | Endpoint | Acesso | Descrição |
+|---|---|---|---|
+| POST | `/api/albums/artists/{id}` | `ADMIN` | Cria um álbum para o artista de id `{id}` |
+| GET | `/api/albums/artists/{id}` | Público | Lista os álbuns do artista de id `{id}` |
+| GET | `/api/albums/{id}` | Público | Retorna o álbum de id `{id}` |
+| PUT | `/api/albums/{id}` | `ADMIN` | Atualiza o álbum de id `{id}` |
+| DELETE | `/api/albums/{id}` | `ADMIN` | Remove o álbum de id `{id}` |
+
+**Músicas**
+
+| Método | Endpoint | Acesso | Descrição |
+|---|---|---|---|
+| POST | `/api/songs/albums/{id}` | `ADMIN` | Cria uma música no álbum de id `{id}` |
+| GET | `/api/songs/albums/{id}` | Público | Lista as músicas do álbum de id `{id}` |
+| GET | `/api/songs/artists/{id}` | Público | Lista as músicas do artista de id `{id}` |
+| GET | `/api/songs/{id}` | Público | Retorna a música de id `{id}` |
+| PUT | `/api/songs/{id}` | `ADMIN` | Atualiza a música de id `{id}` |
+| DELETE | `/api/songs/{id}` | `ADMIN` | Remove a música de id `{id}` |
+
+**Avaliações**
+
+| Método | Endpoint | Acesso | Descrição |
+|---|---|---|---|
+| GET | `/api/ratings/{userId}` | `USER` | Lista as avaliações do usuário de id `{userId}` |
+| GET | `/api/ratings/avg/{songId}` | Público | Média e sentimento predominante da música de id `{songId}` |
+| POST | `/api/ratings/{songId}` | `USER` | Registra a avaliação do usuário autenticado para a música `{songId}` |
+| PUT | `/api/ratings/{songId}` | `USER` | Atualiza a avaliação do usuário autenticado para a música `{songId}` |
+| DELETE | `/api/ratings/{songId}` | `USER` | Remove a avaliação do usuário autenticado para a música `{songId}` |
+
+Nas avaliações o **usuário é sempre o autenticado** (vem das credenciais Basic), nunca do corpo da requisição, e a **data de criação é gerada pelo sistema**. Por isso `POST` e `PUT` recebem somente `rating`, `feeling` e `review`.
+
+### Códigos de status
+
+- **200 OK**: leitura ou atualização bem-sucedida.
+- **201 Created**: criação bem-sucedida; o cabeçalho `Location` aponta para o recurso recém-criado.
+- **204 No Content**: remoção bem-sucedida, sem corpo de resposta.
+- **400 Bad Request**: falha de validação ou JSON malformado. Em falhas de validação, o corpo traz um mapa `fieldErrors` com a mensagem de cada campo.
+- **401 Unauthorized**: rota protegida acessada sem credenciais válidas.
+- **403 Forbidden**: requisição autenticada, mas sem o perfil necessário (inclui a tentativa de criar um `ADMIN` sem estar autenticado como `ADMIN`).
+- **404 Not Found**: recurso inexistente, ou seja, um id que não existe.
+- **409 Conflict**: violação de unicidade ou de integridade, como nome de usuário repetido, título de álbum repetido para o mesmo artista, número de faixa repetido no mesmo álbum, segunda avaliação para a mesma música, ou remoção de um registro que ainda tem filhos.
+- **500 Internal Server Error**: erro inesperado no servidor.
+
+Todo erro usa o mesmo formato de corpo:
+
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "This artist already has an album with that title.",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "fieldErrors": {
+    "title": "must not be blank"
+  }
+}
+```
+
+O campo `fieldErrors` só aparece nas falhas de validação (400). As mensagens da API são devolvidas **em inglês**: a internacionalização exigida pelo R9 cobre a **interface web** (Thymeleaf), ao passo que a API responde com um erro estruturado em JSON, pensado para ser consumido por outro sistema e não exibido diretamente a um usuário final.
+
+### Decisão de projeto nos endpoints de usuário
+
+O documento de requisitos pede dois comportamentos que, à primeira vista, parecem conflitar no mesmo recurso: qualquer pessoa pode criar uma conta de usuário comum (R5), mas apenas um administrador pode cadastrar novos administradores (R4). Como a tabela de endpoints define um único `POST /api/users`, a solução adotada foi a seguinte:
+
+- **`POST /api/users` é público**. Quando o corpo não informa `role`, ou informa `USER`, a conta é criada como usuário comum, atendendo ao R5.
+- Quando o corpo pede `role: "ADMIN"`, o controlador verifica se quem chama está autenticado **como `ADMIN`**. Se estiver, cria o administrador (R4); caso contrário, responde **403**. Assim o mesmo endpoint atende aos dois requisitos sem abrir uma brecha para qualquer pessoa criar administradores.
+- As demais operações sobre usuários (listar, ver, atualizar e remover) são **administrativas** e exigem `ADMIN`, já que expõem ou alteram dados de todas as contas.
+
+Na atualização (`PUT /api/users/{id}`), a senha é **opcional**: se vier em branco ou ausente, o hash atual é preservado; se vier preenchida, é regravada como **hash BCrypt**.
+
+### Exemplos com `curl`
+
+Os exemplos abaixo assumem a aplicação rodando em `http://localhost:8080` (veja o [Roteiro de execução](#roteiro-de-execução)) com os usuários do seed.
+
+Leitura pública, sem login:
+
+```bash
+# Lista todos os artistas
+curl http://localhost:8080/api/artists
+
+# Média e sentimento predominante da música de id 1
+curl http://localhost:8080/api/ratings/avg/1
+```
+
+Cadastro público de um usuário comum (R5, sem login):
+
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"novo","password":"senha123","name":"Novo Usuário"}'
+```
+
+Operações de administrador, com HTTP Basic usando `admin:admin123`:
+
+```bash
+# Cria um artista
+curl -X POST http://localhost:8080/api/artists \
+  -u admin:admin123 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"NewJeans","country":"KR","imageUrl":null}'
+
+# Cria um álbum para o artista de id 1
+curl -X POST http://localhost:8080/api/albums/artists/1 \
+  -u admin:admin123 \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Get Up","genre":"KPOP","releaseYear":2023,"coverUrl":null,"spotifyUrl":null}'
+
+# Cria uma música no álbum de id 1
+curl -X POST http://localhost:8080/api/songs/albums/1 \
+  -u admin:admin123 \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Super Shy","trackNumber":1,"durationSeconds":154,"explicitContent":false}'
+
+# Cria um novo administrador (exige estar autenticado como ADMIN)
+curl -X POST http://localhost:8080/api/users \
+  -u admin:admin123 \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin2","password":"admin234","name":"Segundo Admin","role":"ADMIN"}'
+```
+
+Avaliações como usuário comum, com HTTP Basic usando `luna:luna123`:
+
+```bash
+# Registra a avaliação da música de id 1 (uma por música)
+curl -X POST http://localhost:8080/api/ratings/1 \
+  -u luna:luna123 \
+  -H "Content-Type: application/json" \
+  -d '{"rating":9,"feeling":"EXCITED","review":"Grudenta e viciante!"}'
+
+# Atualiza a avaliação da mesma música
+curl -X PUT http://localhost:8080/api/ratings/1 \
+  -u luna:luna123 \
+  -H "Content-Type: application/json" \
+  -d '{"rating":8,"feeling":"HAPPY","review":"Continua ótima."}'
+
+# Lista as avaliações do usuário de id 2
+curl -u luna:luna123 http://localhost:8080/api/ratings/2
+```
+
+### Coleção Postman
+
+Para facilitar os testes, há uma coleção Postman em `postman/echo-t7.postman_collection.json`. Importe-a no Postman, deixe a aplicação rodando em `http://localhost:8080` e dispare as requisições uma a uma, ou use o Collection Runner para rodar o fluxo completo de ponta a ponta. A coleção já traz no próprio nível dela todas as variáveis necessárias, ou seja, a URL base e as credenciais dos usuários do seed (`admin` e `luna`), então funciona assim que é importada, sem precisar de nenhum environment. As leituras públicas dispensam autenticação, e os identificadores criados ao longo da execução são capturados e reutilizados automaticamente nas requisições seguintes. A execução em sequência cria artista, álbum e música, cria usuários, registra e atualiza uma avaliação, demonstra os casos de 401, 403 e 404 e, por fim, remove tudo na ordem que respeita as restrições de integridade.
 
 ## Roteiro de execução
 
@@ -112,7 +298,7 @@ Uma lista de usuários:
 ```json
 [
   { "username": "admin", "password": "admin123", "name": "Administrador", "role": "ADMIN" },
-  { "username": "luna",  "password": "luna123",  "name": "Luna Park",     "role": "USER"  }
+  { "username": "luna",  "password": "luna123",  "name": "Luna Silva",     "role": "USER"  }
 ]
 ```
 

@@ -4,8 +4,9 @@ import liraz.echo.domain.music.Song;
 import liraz.echo.domain.rating.Feeling;
 import liraz.echo.domain.rating.SongRating;
 import liraz.echo.domain.user.User;
-import liraz.echo.repository.SongRatingRepository;
+import liraz.echo.exceptions.ConflictException;
 import liraz.echo.exceptions.ResourceNotFoundException;
+import liraz.echo.repository.SongRatingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,12 @@ public class RatingService {
     @Transactional(readOnly = true)
     public List<SongRating> findByUser(String username) {
         User user = userService.requireByUsername(username);
+        return songRatingRepository.findByUserId(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<SongRating> findByUserId(Long userId) {
+        User user = userService.require(userId);
         return songRatingRepository.findByUserId(user.getId());
     }
 
@@ -68,6 +75,26 @@ public class RatingService {
         songRating.setFeeling(feeling);
         songRating.setReview(review);
         songRatingRepository.save(songRating);
+    }
+
+    public SongRating createRating(String username, Long songId, Integer rating, Feeling feeling, String review) {
+        User user = userService.requireByUsername(username);
+        Song song = songService.require(songId);
+        if (songRatingRepository.findByUserIdAndSongId(user.getId(), song.getId()).isPresent()) {
+            throw new ConflictException("You have already rated this song. Use PUT to update it.");
+        }
+        return songRatingRepository.save(new SongRating(user, song, rating, feeling, review));
+    }
+
+    public SongRating updateRating(String username, Long songId, Integer rating, Feeling feeling, String review) {
+        User user = userService.requireByUsername(username);
+        SongRating songRating = songRatingRepository
+                .findByUserIdAndSongId(user.getId(), songId)
+                .orElseThrow(() -> new ResourceNotFoundException("Rating not found for song: " + songId));
+        songRating.setRating(rating);
+        songRating.setFeeling(feeling);
+        songRating.setReview(review);
+        return songRatingRepository.save(songRating);
     }
 
     public void delete(String username, Long songId) {

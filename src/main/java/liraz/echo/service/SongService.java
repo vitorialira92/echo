@@ -25,6 +25,11 @@ public class SongService {
     }
 
     @Transactional(readOnly = true)
+    public List<Song> findByArtist(Long artistId) {
+        return songRepository.findByArtistId(artistId);
+    }
+
+    @Transactional(readOnly = true)
     public Song require(Long id) {
         return songRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Song not found: " + id));

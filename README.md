@@ -9,7 +9,7 @@ Sistema web do Echo (catálogo de músicas), feito com **Spring Boot**, **Spring
 - **Avaliações**: usuários autenticados avaliam uma música com nota de 1 a 10, um sentimento e uma resenha opcional, e gerenciam (editam/removem) suas próprias avaliações.
 - **Área administrativa**: administradores fazem o CRUD de artistas, álbuns e músicas e cadastram novos administradores.
 - **Idiomas**: a interface está disponível em **português, inglês e francês**.
-- **API REST**: além da interface web, o sistema expõe uma API REST em JSON sob `/api` para usuários, artistas, álbuns, músicas e avaliações, com autenticação HTTP Basic. Veja a seção [API REST](#api-rest).
+- **API REST**: além da interface web, o sistema expõe uma API REST em JSON sob `/api` para usuários, artistas, álbuns, músicas e avaliações, com autenticação via **token JWT**. Veja a seção [API REST](#api-rest).
 
 ## Regras de negócio
 
@@ -34,18 +34,24 @@ Os corpos de requisição e de resposta são sempre JSON. As respostas nunca dev
 
 ### Autenticação e autorização
 
-A API é **stateless** e usa **HTTP Basic** (nome de usuário e senha em cada requisição), no lugar do login por formulário e sessão da interface web; por isso o CSRF fica desabilitado apenas nas rotas `/api/**`. As regras de acesso seguem os requisitos do sistema:
+A API é **stateless** e usa **autenticação por token JWT** (Bearer), no lugar do login por formulário e sessão da interface web; por isso o CSRF fica desabilitado apenas nas rotas `/api/**`. O cliente primeiro envia usuário e senha para `POST /api/auth/login` e recebe um token assinado; a partir daí, cada requisição às rotas protegidas leva esse token no cabeçalho `Authorization: Bearer <token>`, que um filtro próprio valida antes de a requisição chegar ao controlador. As regras de acesso seguem os requisitos do sistema:
 
 - **Leitura pública do catálogo (R6)**: listar e visualizar artistas, álbuns e músicas, além da média pública de uma música (`/api/ratings/avg/{songId}`), não exige login.
 - **Escrita do catálogo (R1 a R3)**: criar, atualizar e remover artistas, álbuns e músicas exige o perfil **`ADMIN`**.
 - **Avaliações (R7 e R8)**: registrar, atualizar, remover e listar avaliações exige o perfil **`USER`**.
 - **Usuários**: criar é público (R5), enquanto listar, ver, atualizar e remover são operações administrativas (`ADMIN`). A criação de administradores (R4) é tratada à parte, como explicado em [Decisão de projeto nos endpoints de usuário](#decisão-de-projeto-nos-endpoints-de-usuário).
 
-Para testar, use os usuários do seed: **`admin` / `admin123`** (perfil `ADMIN`) e **`luna` / `luna123`** (perfil `USER`).
+Para testar, use os usuários do seed: **`admin` / `admin123`** (perfil `ADMIN`) e **`luna` / `luna123`** (perfil `USER`). O login devolve um JSON com o campo `token` (além de `tokenType`, `expiresIn`, `username` e `role`); o token vale por uma hora, tempo configurável em `echo.security.jwt.expiration` no `application.properties`.
 
-Quem chama uma rota protegida sem credenciais válidas recebe **401**; quem está autenticado mas sem o perfil necessário recebe **403**. Nos dois casos o corpo é um JSON de erro no mesmo formato das demais respostas.
+Quem chama uma rota protegida sem um token válido recebe **401**; quem está autenticado mas sem o perfil necessário recebe **403**. Nos dois casos o corpo é um JSON de erro no mesmo formato das demais respostas.
 
 ### Endpoints
+
+**Autenticação**
+
+| Método | Endpoint | Acesso | Descrição |
+|---|---|---|---|
+| POST | `/api/auth/login` | Público | Recebe `username` e `password` e devolve um token JWT |
 
 **Usuários**
 
@@ -98,7 +104,7 @@ Quem chama uma rota protegida sem credenciais válidas recebe **401**; quem est�
 | PUT | `/api/ratings/{songId}` | `USER` | Atualiza a avaliação do usuário autenticado para a música `{songId}` |
 | DELETE | `/api/ratings/{songId}` | `USER` | Remove a avaliação do usuário autenticado para a música `{songId}` |
 
-Nas avaliações o **usuário é sempre o autenticado** (vem das credenciais Basic), nunca do corpo da requisição, e a **data de criação é gerada pelo sistema**. Por isso `POST` e `PUT` recebem somente `rating`, `feeling` e `review`.
+Nas avaliações o **usuário é sempre o autenticado** (vem do token JWT), nunca do corpo da requisição, e a **data de criação é gerada pelo sistema**. Por isso `POST` e `PUT` recebem somente `rating`, `feeling` e `review`.
 
 ### Códigos de status
 
@@ -106,7 +112,7 @@ Nas avaliações o **usuário é sempre o autenticado** (vem das credenciais Bas
 - **201 Created**: criação bem-sucedida; o cabeçalho `Location` aponta para o recurso recém-criado.
 - **204 No Content**: remoção bem-sucedida, sem corpo de resposta.
 - **400 Bad Request**: falha de validação ou JSON malformado. Em falhas de validação, o corpo traz um mapa `fieldErrors` com a mensagem de cada campo.
-- **401 Unauthorized**: rota protegida acessada sem credenciais válidas.
+- **401 Unauthorized**: rota protegida acessada sem um token válido.
 - **403 Forbidden**: requisição autenticada, mas sem o perfil necessário (inclui a tentativa de criar um `ADMIN` sem estar autenticado como `ADMIN`).
 - **404 Not Found**: recurso inexistente, ou seja, um id que não existe.
 - **409 Conflict**: violação de unicidade ou de integridade, como nome de usuário repetido, título de álbum repetido para o mesmo artista, número de faixa repetido no mesmo álbum, segunda avaliação para a mesma música, ou remoção de um registro que ainda tem filhos.
@@ -160,56 +166,70 @@ curl -X POST http://localhost:8080/api/users \
   -d '{"username":"novo","password":"senha123","name":"Novo Usuário"}'
 ```
 
-Operações de administrador, com HTTP Basic usando `admin:admin123`:
+Para as rotas protegidas, primeiro faça login e guarde o token (os exemplos usam uma variável de shell e o `jq` para ler o campo `token` da resposta):
+
+```bash
+# Token do admin (perfil ADMIN)
+ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' | jq -r .token)
+
+# Token da luna (perfil USER)
+USER_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"luna","password":"luna123"}' | jq -r .token)
+```
+
+Operações de administrador, enviando o token no cabeçalho `Authorization: Bearer`:
 
 ```bash
 # Cria um artista
 curl -X POST http://localhost:8080/api/artists \
-  -u admin:admin123 \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"NewJeans","country":"KR","imageUrl":null}'
 
 # Cria um álbum para o artista de id 1
 curl -X POST http://localhost:8080/api/albums/artists/1 \
-  -u admin:admin123 \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"Get Up","genre":"KPOP","releaseYear":2023,"coverUrl":null,"spotifyUrl":null}'
 
 # Cria uma música no álbum de id 1
 curl -X POST http://localhost:8080/api/songs/albums/1 \
-  -u admin:admin123 \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"Super Shy","trackNumber":1,"durationSeconds":154,"explicitContent":false}'
 
 # Cria um novo administrador (exige estar autenticado como ADMIN)
 curl -X POST http://localhost:8080/api/users \
-  -u admin:admin123 \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin2","password":"admin234","name":"Segundo Admin","role":"ADMIN"}'
 ```
 
-Avaliações como usuário comum, com HTTP Basic usando `luna:luna123`:
+Avaliações como usuário comum, enviando o token da luna no cabeçalho `Authorization: Bearer`:
 
 ```bash
 # Registra a avaliação da música de id 1 (uma por música)
 curl -X POST http://localhost:8080/api/ratings/1 \
-  -u luna:luna123 \
+  -H "Authorization: Bearer $USER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"rating":9,"feeling":"EXCITED","review":"Grudenta e viciante!"}'
 
 # Atualiza a avaliação da mesma música
 curl -X PUT http://localhost:8080/api/ratings/1 \
-  -u luna:luna123 \
+  -H "Authorization: Bearer $USER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"rating":8,"feeling":"HAPPY","review":"Continua ótima."}'
 
 # Lista as avaliações do usuário de id 2
-curl -u luna:luna123 http://localhost:8080/api/ratings/2
+curl -H "Authorization: Bearer $USER_TOKEN" http://localhost:8080/api/ratings/2
 ```
 
 ### Coleção Postman
 
-Para facilitar os testes, há uma coleção Postman em `resources/postman/echo-t7.postman_collection.json`. Importe-a no Postman, deixe a aplicação rodando em `http://localhost:8080` e dispare as requisições uma a uma, ou use o Collection Runner para rodar o fluxo completo de ponta a ponta. A coleção já traz no próprio nível dela todas as variáveis necessárias, ou seja, a URL base e as credenciais dos usuários do seed (`admin` e `luna`), então funciona assim que é importada, sem precisar de nenhum environment. As leituras públicas dispensam autenticação, e os identificadores criados ao longo da execução são capturados e reutilizados automaticamente nas requisições seguintes. A execução em sequência cria artista, álbum e música, cria usuários, registra e atualiza uma avaliação, demonstra os casos de 401, 403 e 404 e, por fim, remove tudo na ordem que respeita as restrições de integridade.
+Para facilitar os testes, há uma coleção Postman em `resources/postman/echo-t7.postman_collection.json`. Importe-a no Postman, deixe a aplicação rodando em `http://localhost:8080` e dispare as requisições uma a uma, ou use o Collection Runner para rodar o fluxo completo de ponta a ponta. A coleção já traz no próprio nível dela todas as variáveis necessárias, ou seja, a URL base e as credenciais dos usuários do seed (`admin` e `luna`), então funciona assim que é importada, sem precisar de nenhum environment. A autenticação é por token JWT: a pasta `0. Autenticação` faz o login do `admin` e da `luna` e guarda os tokens nas variáveis `adminToken` e `userToken`, enviados como `Authorization: Bearer` nas demais requisições; além disso, um pré-request da coleção refaz esse login automaticamente caso as variáveis de token estejam vazias, de modo que qualquer requisição também funciona isoladamente. As leituras públicas dispensam autenticação, e os identificadores criados ao longo da execução são capturados e reutilizados automaticamente nas requisições seguintes. A execução em sequência autentica os usuários, cria artista, álbum e música, cria usuários, registra e atualiza uma avaliação, demonstra os casos de 401, 403 e 404 e, por fim, remove tudo na ordem que respeita as restrições de integridade.
 
 ## Roteiro de execução
 

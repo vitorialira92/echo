@@ -4,13 +4,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import liraz.echo.dto.error.ApiError;
+import liraz.echo.security.JwtAuthenticationFilter;
+import liraz.echo.security.JwtProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,13 +25,14 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.http.HttpMethod;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
     private final ObjectMapper objectMapper;
@@ -39,11 +47,18 @@ public class SecurityConfig {
     }
 
     @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
     @Order(1)
-    public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http,
+                                                      JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .securityMatcher("/api/**")
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/artists", "/api/artists/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/albums/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/songs/**").permitAll()
@@ -57,8 +72,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .httpBasic(basic -> basic.authenticationEntryPoint(this::commenceUnauthorized))
-                .exceptionHandling(ex -> ex.accessDeniedHandler(this::handleForbidden));
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(this::commenceUnauthorized)
+                        .accessDeniedHandler(this::handleForbidden))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
@@ -84,12 +101,21 @@ public class SecurityConfig {
         return http.build();
     }
 
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(
+            JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     private void commenceUnauthorized(HttpServletRequest request,
                                       HttpServletResponse response,
                                       AuthenticationException exception) throws IOException {
-        response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"echo\"");
+        response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer realm=\"echo\"");
         writeError(response, HttpStatus.UNAUTHORIZED,
-                "Authentication required. Provide your username and password using HTTP Basic.");
+                "Authentication required. Send a JWT via the 'Authorization: Bearer <token>' header. "
+                        + "Obtain one at POST /api/auth/login.");
     }
 
     private void handleForbidden(HttpServletRequest request,

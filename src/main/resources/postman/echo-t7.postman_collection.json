@@ -2,20 +2,15 @@
   "info": {
     "_postman_id": "f59d97e3-f072-4aa2-98b0-5b12b1731fce",
     "name": "Echo T7 - API REST",
-    "description": "Colecao de testes da API REST do Echo (atividade T7).\n\nA API roda sob /api e usa autenticacao HTTP Basic. Os usuarios do seed sao admin (senha admin123, perfil ADMIN) e luna (senha luna123, perfil USER).\n\nAs variaveis baseUrl, adminUser, adminPass, userUser e userPass ja vem preenchidas, entao basta importar e rodar com a aplicacao no ar em http://localhost:8080. Os identificadores criados durante a execucao (artistId, albumId, songId, userId, createdAdminId) sao capturados automaticamente pelos scripts de teste e reaproveitados nas requisicoes seguintes.\n\nUsando o Collection Runner, a ordem das pastas executa um fluxo completo de ponta a ponta: cria artista, album e musica, cria usuarios, registra e atualiza uma avaliacao, demonstra os casos de acesso (401, 403 e 404) e, por fim, remove tudo na ordem correta. As leituras do catalogo e a media de uma musica sao publicas; escrever no catalogo exige ADMIN e as avaliacoes exigem o perfil USER.",
+    "description": "Colecao de testes da API REST do Echo (atividade T7).\n\nA autenticacao/autorizacao da API e feita via token JWT (Bearer). O fluxo e: POST /api/auth/login com usuario e senha devolve um token; esse token deve ser enviado no cabecalho 'Authorization: Bearer <token>' nas demais rotas de /api.\n\nA pasta '0. Autenticacao' faz o login do admin (admin/admin123, perfil ADMIN) e da luna (luna/luna123, perfil USER) e guarda os tokens em {{adminToken}} e {{userToken}}. Alem disso, um pre-request da colecao autentica automaticamente caso as variaveis de token estejam vazias, entao qualquer requisicao tambem funciona isoladamente.\n\nBasta importar e rodar (Collection Runner, de cima para baixo) com a aplicacao no ar em http://localhost:8080. As rotas GET publicas e a criacao de usuario comum seguem sem token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
-    "type": "basic",
-    "basic": [
+    "type": "bearer",
+    "bearer": [
       {
-        "key": "username",
-        "value": "{{adminUser}}",
-        "type": "string"
-      },
-      {
-        "key": "password",
-        "value": "{{adminPass}}",
+        "key": "token",
+        "value": "{{adminToken}}",
         "type": "string"
       }
     ]
@@ -85,9 +80,131 @@
       "key": "apiAdminUsername",
       "value": "apiadmin",
       "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
+    {
+      "name": "0. Autenticacao",
+      "description": "Login por usuario e senha em POST /api/auth/login. A resposta traz o token JWT, que e guardado em {{adminToken}} e {{userToken}} e reutilizado como 'Authorization: Bearer' nas demais requisicoes. Rode esta pasta primeiro.",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUser}}\",\n  \"password\": \"{{adminPass}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Autentica o admin (perfil ADMIN) e guarda o JWT em {{adminToken}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set(\"adminToken\", json.token);",
+                  "pm.test(\"recebeu token JWT\", function () {",
+                  "    pm.expect(json.token, \"token\").to.be.a(\"string\").and.to.have.length.above(0);",
+                  "    pm.expect(json.tokenType).to.eql(\"Bearer\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (usuario luna)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{userUser}}\",\n  \"password\": \"{{userPass}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Autentica luna (perfil USER) e guarda o JWT em {{userToken}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set(\"userToken\", json.token);",
+                  "pm.test(\"recebeu token JWT\", function () {",
+                  "    pm.expect(json.token, \"token\").to.be.a(\"string\").and.to.have.length.above(0);",
+                  "    pm.expect(json.tokenType).to.eql(\"Bearer\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "1. Artistas",
       "description": "CRUD de artistas (R1). Leituras sao publicas; escrita exige ADMIN.",
@@ -831,16 +948,11 @@
       "name": "5. Avaliacoes",
       "description": "A avaliacao e sempre do usuario autenticado. Esta pasta autentica como luna (USER) por padrao. A media e publica.",
       "auth": {
-        "type": "basic",
-        "basic": [
+        "type": "bearer",
+        "bearer": [
           {
-            "key": "username",
-            "value": "{{userUser}}",
-            "type": "string"
-          },
-          {
-            "key": "password",
-            "value": "{{userPass}}",
+            "key": "token",
+            "value": "{{userToken}}",
             "type": "string"
           }
         ]
@@ -1069,16 +1181,11 @@
               ]
             },
             "auth": {
-              "type": "basic",
-              "basic": [
+              "type": "bearer",
+              "bearer": [
                 {
-                  "key": "username",
-                  "value": "{{userUser}}",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "{{userPass}}",
+                  "key": "token",
+                  "value": "{{userToken}}",
                   "type": "string"
                 }
               ]
@@ -1128,16 +1235,11 @@
               ]
             },
             "auth": {
-              "type": "basic",
-              "basic": [
+              "type": "bearer",
+              "bearer": [
                 {
-                  "key": "username",
-                  "value": "{{adminUser}}",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "{{adminPass}}",
+                  "key": "token",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -1221,16 +1323,11 @@
               ]
             },
             "auth": {
-              "type": "basic",
-              "basic": [
+              "type": "bearer",
+              "bearer": [
                 {
-                  "key": "username",
-                  "value": "{{userUser}}",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "{{userPass}}",
+                  "key": "token",
+                  "value": "{{userToken}}",
                   "type": "string"
                 }
               ]
@@ -1395,6 +1492,37 @@
           ]
         }
       ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+          "",
+          "function ensureToken(tokenVar, userVar, passVar) {",
+          "    if (pm.collectionVariables.get(tokenVar)) { return; }",
+          "    pm.sendRequest({",
+          "        url: baseUrl + \"/api/auth/login\",",
+          "        method: \"POST\",",
+          "        header: { \"Content-Type\": \"application/json\" },",
+          "        body: { mode: \"raw\", raw: JSON.stringify({",
+          "            username: pm.collectionVariables.get(userVar),",
+          "            password: pm.collectionVariables.get(passVar)",
+          "        }) }",
+          "    }, function (err, res) {",
+          "        if (!err && res && res.code === 200) {",
+          "            pm.collectionVariables.set(tokenVar, res.json().token);",
+          "        }",
+          "    });",
+          "}",
+          "",
+          "ensureToken(\"adminToken\", \"adminUser\", \"adminPass\");",
+          "ensureToken(\"userToken\", \"userUser\", \"userPass\");"
+        ]
+      }
     }
   ]
 }
